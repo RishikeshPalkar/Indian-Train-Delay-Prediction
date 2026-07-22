@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  # 1. MySQL 8.0 Database Container
+  db:
+    image: mysql:8.0
+    container_name: train_mysql_db
+    restart: always
+    environment:
+      MYSQL_DATABASE: traindb
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # 2. Python FastAPI AI Microservice
+  ai-service:
+    build: ./python-ai-service
+    container_name: train_ai_service
+    restart: always
+    ports:
+      - "8000:8000"
+
+  # 3. Spring Boot Backend Service
+  backend:
+    build: ./spring-backend
+    container_name: train_backend
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/traindb?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      AI_SERVICE_URL: http://ai-service:8000/predict
+      RAILRADAR_API_KEY: ${RAILRADAR_API_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
+      ai-service:
+        condition: service_started
+
+volumes:
+  mysql_data:
