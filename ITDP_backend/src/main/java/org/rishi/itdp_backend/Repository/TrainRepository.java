@@ -1,6 +1,6 @@
 package org.rishi.itdp_backend.Repository;
 
-@RRepository
+@Repository
 public interface TrainRepository extends JpaRepository<Train, Long> {
     /**
      * Find train by train number
